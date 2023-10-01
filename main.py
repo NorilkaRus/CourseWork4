@@ -41,14 +41,19 @@ while True:
     json_manager.save_file(vacancy_dict)
     vacancies = json_manager.load_from_file()
 
-    #все
-    json_manager.all_vacancies(vacancies)
+    while True:
+        try:
+            user_input = int(input("Список вакансий сформирован.\n1. - Показать все\n2. - Отсортировать по зарплате\n"))
+        except ValueError:
+            print("Команда должна быть написана цифрами")
+            continue
 
-    #сортировка
-    json_manager.sort_vacancies_by_salary(vacancies)
-    break
-
-
-# добавить сорировку по командам
-#очистка json
-# начать заново
+        if user_input not in [1, 2]:
+            print("Неверно введена команда")
+            continue
+        elif user_input == 1:
+            json_manager.all_vacancies(vacancies)
+            break
+        elif user_input == 2:
+            json_manager.sort_vacancies_by_salary(vacancies)
+        break

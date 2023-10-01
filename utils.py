@@ -223,7 +223,10 @@ class SuperJobAPI(APIManager):
                 salary_to = ""
 
             requirement = vacancy['candidat']
-            responsibility = vacancy['client']['description']
+            try:
+                responsibility = vacancy['client']['description']
+            except KeyError:
+                responsibility = "-"
 
 
             vacancy_dict[vacancy_id] = {'url': vacancy['link'],
