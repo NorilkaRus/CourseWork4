@@ -13,12 +13,12 @@ class APIManager(ABC):
         """получает вакансии по апи, возвращает неформатированный json"""
         pass
 
-    #@abstractmethod
-    #def format_data(self):
+    @abstractmethod
+    def format_data(self):
         """
         форматирует json к единому виду "вакансии" в виде dict
         """
-        #pass
+        pass
 
 
 class Vacancy:
