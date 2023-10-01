@@ -1,7 +1,10 @@
 import requests
 import json
+from datetime import datetime
 from abc import ABC, abstractmethod
 from heapq import nlargest
+import os
+
 
 class APIManager(ABC):
 
@@ -10,28 +13,30 @@ class APIManager(ABC):
         """получает вакансии по апи, возвращает неформатированный json"""
         pass
 
-    @abstractmethod
-    def format_data(self):
+    #@abstractmethod
+    #def format_data(self):
         """
         форматирует json к единому виду "вакансии" в виде dict
         """
-        pass
+        #pass
 
 
 class Vacancy:
-    def __init__(self, url, name, salary, requirement, responsibility):
+    def __init__(self, url, name, salary, requirement, responsibility, date_published):
         self.url = url
         self.name = name
         self.salary = salary
         self.requirement = requirement
         self.responsibility = responsibility
+        self.date_published = date_published
 
     def __repr__(self):
         return f"""{self.name}
 {self.url}
 {self.salary}
 {self.requirement}
-{self.responsibility}"""
+{self.responsibility}
+Дата публикации: {self.date_published}"""
 
     def salary_comparison(self):
         """
@@ -78,7 +83,8 @@ class JsonManager:
                                      value['name'],
                                      value['salary'],
                                      value['requirement'],
-                                     value['responsibility']))
+                                     value['responsibility'],
+                                     value['date_published']))
         return vacancies
 
     def all_vacancies(self, vacancies):
@@ -87,8 +93,11 @@ class JsonManager:
         :param vacancies: словарь с экземплярами класса Vacancy
         :return: удобный читабельный список вакансий в консоли
         """
+        l = len(vacancies)
+        n = 1
         for vacancy in vacancies:
-            print(f'{vacancy}\n')
+            print(f"{n}. {vacancy}\n")
+            n += 1
 
     def sort_vacancies_by_salary(self, vacancies):
         """
@@ -106,9 +115,6 @@ class JsonManager:
             print(f"{n}. {vacancy}\n")
             n += 1
 
-    def delete_vacancy(self, vacancy):
-        pass
-
 
 class HeadHunterAPI(APIManager):
 
@@ -121,11 +127,12 @@ class HeadHunterAPI(APIManager):
         Получает вакансии по апи, возвращает неформатированный json
         """
         headers = {'User-Agent': 'Norilka'}
-        parametres = {f'text': {vacancy},
+        parametres = {'text': vacancy,
                       'only_with_salary': True,
-                      'salary': {salary}}
+                      'salary': salary,
+                      'per_page':100}
 
-        response = requests.get(self.url, parametres).json()
+        response = requests.get(self.url, headers=headers, params=parametres).json()
         return response
 
 
@@ -154,15 +161,77 @@ class HeadHunterAPI(APIManager):
             requirement = vacancy['snippet']['requirement']
             responsibility = vacancy['snippet']['responsibility']
 
+            published = vacancy['published_at']
+            date_published = datetime.strptime(published, "%Y-%m-%dT%H:%M:%S%z")
+
             vacancy_dict[vacancy_id] = {'url': f"https://hh.ru/vacancy/{vacancy_id}",
                             'name': vacancy['name'],
                             'salary': f"{salary_from}{salary_to}{vacancy['salary']['currency']}",
                             'requirement': requirement,
-                            'responsibility': responsibility}
+                            'responsibility': responsibility,
+                            'date_published': date_published.strftime("%d.%m.%Y")}
 
         return vacancy_dict
 
 
+class SuperJobAPI(APIManager):
 
-a = HeadHunterAPI()
-b = a.get_vacancies('Python', 1) #salary не меньше 1!!
+    def __init__(self):
+        self.url = 'https://api.superjob.ru/2.0/vacancies/'
+
+
+    def get_vacancies(self, vacancy: str, salary: int):
+        """
+        Получает вакансии по апи, возвращает неформатированный json
+        """
+        api_key: str = os.getenv('SUPERJOB_API_KEY')
+
+        headers = {f'Host': 'api.superjob.ru',
+                   'X-Api-App-Id': api_key,
+                   'Authorization': 'Bearer r.000000010000001.example.access_token',
+                   'Content-Type': 'application/x-www-form-urlencoded'}
+        
+        parametres = {'keyword': vacancy,
+                      'payment_value': salary,
+                      'payment_defined': 1,
+                      'per_page':100}
+
+        response = requests.get(self.url, headers=headers, params=parametres).json()
+
+        return response
+
+    def format_data(self, data):
+        """
+        Приводит неформатированный JSON-словарь к единому словарю
+        :param data: неформатированный JSON-словарь (результат медотода get_vacancies)
+        :return: словарь с вакансиями, в котором собрана только важная информация
+        """
+        self.data = data
+        vacancy_dict = {}
+
+        for vacancy in data['objects']:
+            vacancy_id = vacancy['id']
+
+            # Определение зарплатной вилки и правильная запись в словарь
+            if vacancy['payment_from'] != None:
+                salary_from = f"от {vacancy['payment_from']} "
+            else:
+                salary_from = ""
+            if vacancy['payment_to'] != None:
+                salary_to = f"до {vacancy['payment_to']} "
+            else:
+                salary_to = ""
+
+            requirement = vacancy['candidat']
+            responsibility = vacancy['client']['description']
+
+
+            vacancy_dict[vacancy_id] = {'url': vacancy['link'],
+                                        'name': vacancy['profession'],
+                                        'salary': f"{salary_from}{salary_to}{vacancy['currency']}",
+                                        'requirement': requirement,
+                                        'responsibility': responsibility,
+                                        'date_published': 'неизвестно'}
+
+        return vacancy_dict
+
