@@ -57,3 +57,16 @@ while True:
         elif user_input == 2:
             json_manager.sort_vacancies_by_salary(vacancies)
         break
+
+    try:
+        repeat = int(input("1. - Новый поиск\n2. - Завершить\n"))
+    except ValueError:
+        print("Команда должна быть написана цифрами")
+        continue
+    if repeat == 1:
+        pass
+    if repeat == 2:
+        break
+    else:
+        print("Неверно введена команда")
+        continue
